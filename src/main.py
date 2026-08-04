@@ -43,41 +43,41 @@ def main():
         print(f"Action space: {action_space}")
 
     # ==========================================================
-    # Experiment 3 - Actions
+    # Experiment 3 - Action Steps 
     # ==========================================================
 
     print("\n" + "=" * 60)
-    print("FIRST STEP")
+    print("MULTI-AGENT LOOP")
     print("=" * 60)
 
-    actions = {
-        "agent_0": 0,
-        "agent_1": 0,
-        "agent_2": 0,
-    }
+    observations, infos = env.reset(seed=42)
 
-    print("\nActions:")
-    print(actions)
+    step = 0
 
-    (
-        next_observations,
-        rewards,
-        terminations,
-        truncations,
-        infos,
-    ) = env.step(actions)
+    while True:
 
-    print("\nRewards:")
-    print(rewards)
+        actions = {
+            "agent_0": 0,
+            "agent_1": 0,
+            "agent_2": 0,
+        }
 
-    print("\nTerminations:")
-    print(terminations)
+        (
+            observations,
+            rewards,
+            terminations,
+            truncations,
+            infos,
+        ) = env.step(actions)
 
-    print("\nTruncations:")
-    print(truncations)
+        step += 1
 
-    print("\nNext observation keys:")
-    print(next_observations.keys())
+        print(f"\nStep: {step}")
+        print(f"Rewards: {dict(rewards)}")
+
+        if all(terminations.values()) or all(truncations.values()):
+            print("\nEpisode finished!")
+            break
 
     # ==========================================================
     # Observation Keys
