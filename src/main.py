@@ -1,10 +1,17 @@
 from environment.simple_spread import create_environment
 
+from agents.random_agent import RandomAgent
+
 
 def main():
     env = create_environment()
 
-    observations, infos = env.reset(seed=42)
+    agents = {}
+
+    for agent_name in env.agents:
+        agents[agent_name] = RandomAgent(
+            env.action_space(agent_name)
+        )
 
     print("=" * 50)
     print("Simple Spread Environment")
@@ -56,11 +63,16 @@ def main():
 
     while True:
 
-        actions = {
-            "agent_0": 0,
-            "agent_1": 0,
-            "agent_2": 0,
-        }
+        actions = {}
+
+        for agent_name in env.agents:
+            observation = observations[agent_name]
+
+            action = agents[agent_name].choose_action(
+                observation
+            )
+
+            actions[agent_name] = action
 
         (
             observations,
@@ -78,18 +90,6 @@ def main():
         if all(terminations.values()) or all(truncations.values()):
             print("\nEpisode finished!")
             break
-
-    # ==========================================================
-    # Observation Keys
-    # ==========================================================
-
-    print("\n" + "=" * 60)
-    print("OBSERVATION KEYS")
-    print("=" * 60 + "\n")
-
-    for agent in observations.keys():
-        print(agent)
-
 
 if __name__ == "__main__":
     main()
