@@ -2,13 +2,16 @@ from environment.simple_spread import create_environment
 
 from agents.random_agent import RandomAgent
 
+from utils.discretization import discretize
 
 def main():
     env = create_environment()
 
+    observations, infos = env.reset(seed=42)
+
     agents = {}
 
-    for agent_name in env.agents:
+    for agent_name in env.possible_agents:
         agents[agent_name] = RandomAgent(
             env.action_space(agent_name)
         )
@@ -17,7 +20,7 @@ def main():
     print("Simple Spread Environment")
     print("=" * 50)
 
-    print(f"\nAgents: {env.agents}")
+    print(f"\nAgents: {env.possible_agents}")
     print(f"\nNumber of agents: {len(env.agents)}")
 
     # ==========================================================
@@ -28,7 +31,7 @@ def main():
     print("OBSERVATIONS")
     print("=" * 60)
 
-    for agent in env.agents:
+    for agent in env.possible_agents:
         observation = observations[agent]
 
         print(f"\nAgent: {agent}")
@@ -58,6 +61,22 @@ def main():
     print("=" * 60)
 
     observations, infos = env.reset(seed=42)
+
+    # ==========================================================
+    # Experiment 0 - Discretization Test
+    # ==========================================================
+
+    print("\n" + "=" * 60)
+    print("DISCRETIZATION TEST")
+    print("=" * 60)
+
+    observation = observations["agent_0"]
+
+    state = discretize(observation)
+
+    print(f"\nOriginal observation shape: {observation.shape}")
+    print(f"Discrete state: {state}")
+    print(f"State size: {len(state)}")
 
     step = 0
 
