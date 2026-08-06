@@ -1,7 +1,10 @@
 from collections import defaultdict
 import random
+import numpy as np
 
 from agents.base_agent import BaseAgent
+
+from utils.discretization import discretize
 
 
 class IndependentQLearningAgent(BaseAgent):
@@ -34,33 +37,52 @@ class IndependentQLearningAgent(BaseAgent):
 
             ]
 
-    def choose_action(self, state):
+    def choose_action(self, observation):
+
+        state = discretize(observation)
 
         self._initialize_state(state)
 
         if random.random() < self.epsilon:
-
             return self.action_space.sample()
 
-        q_values = self.q_table[state]
-
-        return q_values.index(max(q_values))
-
+        return int(np.argmax(self.q_table[state]))
 
     def update(
-
         self,
-
-        state,
-
+        observation,
         action,
-
         reward,
-
-        next_state,
-
+        next_observation,
         done,
-
     ):
+        """
+        Updates the Q-table using the Q-Learning equation.
+        """
 
-        pass
+        # Convert observations to discrete states
+        state = discretize(observation)
+        next_state = discretize(next_observation)
+
+        # Ensure both states exist in the Q-table
+        self._initialize_state(state)
+        self._initialize_state(next_state)
+
+        # Current estimate
+        current_q = self.q_table[state][action]
+
+        # Target value
+        if done:
+
+            target = reward
+
+        else:
+
+            max_next_q = max(self.q_table[next_state])
+
+            target = reward + self.gamma * max_next_q
+
+        # Q-Learning update
+        self.q_table[state][action] += (
+            self.alpha * (target - current_q)
+        )
