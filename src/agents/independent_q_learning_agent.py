@@ -15,6 +15,8 @@ class IndependentQLearningAgent(BaseAgent):
         alpha=0.1,
         gamma=0.99,
         epsilon=1.0,
+        epsilon_decay=0.995,
+        epsilon_min=0.05,
     ):
 
         self.action_space = action_space
@@ -22,8 +24,16 @@ class IndependentQLearningAgent(BaseAgent):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
 
         self.q_table = {}
+
+    def decay_epsilon(self):
+        self.epsilon = max(
+            self.epsilon_min,
+            self.epsilon * self.epsilon_decay
+        )
 
     def _initialize_state(self, state):
 

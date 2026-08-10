@@ -5,167 +5,192 @@ from utils.discretization import discretize
 
 def main():
 
+    # ==========================================================
+    # Training configuration
+    # ==========================================================
+
+    num_episodes = 100
+
+    # ==========================================================
+    # Environment
+    # ==========================================================
+
     env = create_environment()
 
-    observations, infos = env.reset(seed=42)
+    # ==========================================================
+    # Agents
+    # ==========================================================
 
     agents = {}
 
     for agent_name in env.possible_agents:
+
         agents[agent_name] = IndependentQLearningAgent(
-            action_space=env.action_space(agent_name)
+            env.action_space(agent_name)
         )
 
-    print("=" * 50)
-    print("Simple Spread Environment")
-    print("=" * 50)
+    print("=" * 60)
+    print("SIMPLE SPREAD - TRAINING")
+    print("=" * 60)
 
     print(f"\nAgents: {env.possible_agents}")
-    print(f"\nNumber of agents: {len(env.possible_agents)}")
+    print(f"Number of agents: {len(env.possible_agents)}")
+    print(f"Episodes: {num_episodes}")
 
     # ==========================================================
-    # Experiment 1 - Observations
+    # Training metrics
     # ==========================================================
 
-    print("\n" + "=" * 60)
-    print("OBSERVATIONS")
-    print("=" * 60)
-
-    for agent in env.possible_agents:
-
-        observation = observations[agent]
-
-        print(f"\nAgent: {agent}")
-        print(f"Shape: {observation.shape}")
-        print(f"Observation:\n{observation}")
+    episode_rewards = []
+    episode_steps = []
+    epsilon_history = []
+    q_table_sizes = []
 
     # ==========================================================
-    # Experiment 2 - Action Spaces
+    # Training loop
     # ==========================================================
 
-    print("\n" + "=" * 60)
-    print("ACTION SPACES")
-    print("=" * 60)
+    for episode in range(1, num_episodes + 1):
 
-    for agent in env.possible_agents:
+        observations, infos = env.reset()
 
-        action_space = env.action_space(agent)
+        total_reward = 0.0
+        step = 0
 
-        print(f"\nAgent: {agent}")
-        print(f"Action space: {action_space}")
+        while True:
 
-    # ==========================================================
-    # Experiment 0 - Discretization Test
-    # ==========================================================
+            actions = {}
 
-    print("\n" + "=" * 60)
-    print("DISCRETIZATION TEST")
-    print("=" * 60)
+            # --------------------------------------------------
+            # Select actions
+            # --------------------------------------------------
 
-    observation = observations["agent_0"]
+            for agent_name in env.agents:
 
-    state = discretize(observation)
+                observation = observations[agent_name]
 
-    print(f"\nOriginal observation shape: {observation.shape}")
-    print(f"Discrete state: {state}")
-    print(f"State size: {len(state)}")
+                action = agents[agent_name].choose_action(
+                    observation
+                )
 
-    # ==========================================================
-    # Experiment 3 - Multi-Agent Loop
-    # ==========================================================
+                actions[agent_name] = action
 
-    print("\n" + "=" * 60)
-    print("MULTI-AGENT LOOP")
-    print("=" * 60)
+            # --------------------------------------------------
+            # Environment transition
+            # --------------------------------------------------
 
-    step = 0
-
-    while True:
-
-        actions = {}
-
-        # ------------------------------------------------------
-        # Escolha das ações
-        # ------------------------------------------------------
-
-        for agent_name in env.agents:
-
-            observation = observations[agent_name]
-
-            action = agents[agent_name].choose_action(
-                observation
+            next_observations, rewards, terminations, truncations, infos = (
+                env.step(actions)
             )
 
-            actions[agent_name] = action
+            # --------------------------------------------------
+            # Q-Learning update
+            # --------------------------------------------------
 
-        # ------------------------------------------------------
-        # Executa ações no ambiente
-        # ------------------------------------------------------
+            for agent_name in env.agents:
 
-        (
-            next_observations,
-            rewards,
-            terminations,
-            truncations,
-            infos,
-        ) = env.step(actions)
+                done = (
+                    terminations[agent_name]
+                    or truncations[agent_name]
+                )
 
-        # ------------------------------------------------------
-        # Atualiza cada agente
-        # ------------------------------------------------------
+                agents[agent_name].update(
+                    observation=observations[agent_name],
+                    action=actions[agent_name],
+                    reward=rewards[agent_name],
+                    next_observation=next_observations[agent_name],
+                    done=done,
+                )
 
-        for agent_name in env.agents:
+            # --------------------------------------------------
+            # Update state
+            # --------------------------------------------------
 
-            done = (
-                terminations[agent_name]
-                or truncations[agent_name]
+            observations = next_observations
+
+            # --------------------------------------------------
+            # Metrics
+            # --------------------------------------------------
+
+            total_reward += sum(rewards.values())
+            step += 1
+
+            # --------------------------------------------------
+            # Episode termination
+            # --------------------------------------------------
+
+            if all(terminations.values()) or all(truncations.values()):
+                break
+
+        # ======================================================
+        # Epsilon decay
+        # ======================================================
+
+        for agent_name in agents:
+
+            agents[agent_name].decay_epsilon()
+
+        # ======================================================
+        # Store metrics
+        # ======================================================
+
+        episode_rewards.append(total_reward)
+        episode_steps.append(step)
+
+        epsilon_history.append(
+            agents["agent_0"].epsilon
+        )
+
+        q_table_sizes.append(
+            sum(
+                len(agent.q_table)
+                for agent in agents.values()
             )
+        )
 
-            agents[agent_name].update(
-                observation=observations[agent_name],
-                action=actions[agent_name],
-                reward=rewards[agent_name],
-                next_observation=next_observations[agent_name],
-                done=done,
-            )
+        # ======================================================
+        # Training progress
+        # ======================================================
 
-        observations = next_observations
-
-        # ------------------------------------------------------
-        # Debug temporário da Q-Table
-        # ------------------------------------------------------
-
-        print("\n" + "=" * 60)
-        print("Q-TABLE SIZE")
-        print("=" * 60)
-
-        agent = agents["agent_0"]
-
-        print(f"Number of states: {len(agent.q_table)}")
-
-        if len(agent.q_table) > 0:
-
-            first_state = next(iter(agent.q_table))
-
-            print(f"Example state: {first_state}")
+        if episode == 1 or episode % 10 == 0:
 
             print(
-                f"Q-values: {agent.q_table[first_state]}"
+                f"Episode {episode:3d} | "
+                f"Reward: {total_reward:8.3f} | "
+                f"Steps: {step:3d} | "
+                f"Epsilon: {agents['agent_0'].epsilon:.3f} | "
+                f"Q-States: {q_table_sizes[-1]}"
             )
 
-            print(f"Visited states: {len(agent.q_table)}")
+    # ==========================================================
+    # Training summary
+    # ==========================================================
 
-            for state, values in list(agent.q_table.items())[:5]:
-                print(state, values)
+    print("\n" + "=" * 60)
+    print("TRAINING FINISHED")
+    print("=" * 60)
 
-        step += 1
+    print(f"\nEpisodes: {num_episodes}")
 
-        print(f"\nStep: {step}")
-        print(f"Rewards: {dict(rewards)}")
+    print(
+        f"Initial reward: {episode_rewards[0]:.3f}"
+    )
 
-        if all(terminations.values()) or all(truncations.values()):
-            print("\nEpisode finished!")
-            break
+    print(
+        f"Final reward: {episode_rewards[-1]:.3f}"
+    )
+
+    print(
+        f"Initial epsilon: {epsilon_history[0]:.3f}"
+    )
+
+    print(
+        f"Final epsilon: {epsilon_history[-1]:.3f}"
+    )
+
+    print(
+        f"Final Q-table states: {q_table_sizes[-1]}"
+    )
 
     env.close()
 
