@@ -1,6 +1,6 @@
 from environment.simple_spread import create_environment
 from agents.independent_q_learning_agent import IndependentQLearningAgent
-from utils.discretization import discretize
+from agents.random_agent import RandomAgent
 
 
 def main():
@@ -79,9 +79,13 @@ def main():
             # Environment transition
             # --------------------------------------------------
 
-            next_observations, rewards, terminations, truncations, infos = (
-                env.step(actions)
-            )
+            (
+                next_observations,
+                rewards,
+                terminations,
+                truncations,
+                infos,
+            ) = env.step(actions)
 
             # --------------------------------------------------
             # Q-Learning update
@@ -191,6 +195,225 @@ def main():
     print(
         f"Final Q-table states: {q_table_sizes[-1]}"
     )
+
+    # ==========================================================
+    # Evaluation
+    # ==========================================================
+
+    print("\n" + "=" * 60)
+    print("EVALUATION")
+    print("=" * 60)
+
+    evaluation_episodes = 100
+    evaluation_rewards = []
+
+    # ----------------------------------------------------------
+    # Disable exploration
+    # ----------------------------------------------------------
+
+    for agent in agents.values():
+        agent.epsilon = 0.0
+
+    # ----------------------------------------------------------
+    # Evaluation loop
+    # ----------------------------------------------------------
+
+    for episode in range(evaluation_episodes):
+
+        observations, infos = env.reset(seed=42 + episode)
+
+        episode_reward = 0.0
+        step = 0
+
+        while True:
+
+            actions = {}
+
+            # --------------------------------------------------
+            # Select greedy actions
+            # --------------------------------------------------
+
+            for agent_name in env.agents:
+
+                action = agents[agent_name].choose_action(
+                    observations[agent_name]
+                )
+
+                actions[agent_name] = action
+
+            # --------------------------------------------------
+            # Environment transition
+            # --------------------------------------------------
+
+            (
+                next_observations,
+                rewards,
+                terminations,
+                truncations,
+                infos,
+            ) = env.step(actions)
+
+            # --------------------------------------------------
+            # Evaluation reward
+            # --------------------------------------------------
+
+            episode_reward += sum(rewards.values())
+
+            observations = next_observations
+
+            step += 1
+
+            # --------------------------------------------------
+            # Episode termination
+            # --------------------------------------------------
+
+            if all(terminations.values()) or all(truncations.values()):
+                break
+
+        evaluation_rewards.append(episode_reward)
+
+        if (episode + 1) % 10 == 0:
+
+            print(
+                f"Episode {episode + 1:3d} | "
+                f"Reward: {episode_reward:8.3f} | "
+                f"Steps: {step:3d}"
+            )
+
+    # ==========================================================
+    # Evaluation summary
+    # ==========================================================
+
+    average_reward = (
+        sum(evaluation_rewards)
+        / len(evaluation_rewards)
+    )
+
+    print("\n" + "=" * 60)
+    print("EVALUATION SUMMARY")
+    print("=" * 60)
+
+    print(
+        f"Evaluation episodes: {evaluation_episodes}"
+    )
+
+    print(
+        f"Average reward: {average_reward:.3f}"
+    )
+
+    print(
+        f"Best reward: {max(evaluation_rewards):.3f}"
+    )
+
+    print(
+        f"Worst reward: {min(evaluation_rewards):.3f}"
+    )
+
+    print(
+        f"Q-table states: {len(agents['agent_0'].q_table)}"
+    )
+
+    print(
+        f"Final epsilon: {agents['agent_0'].epsilon:.3f}"
+    )
+
+    # ==========================================================
+    # Random Agent Baseline
+    # ==========================================================
+
+    print("\n" + "=" * 60)
+    print("RANDOM AGENT BASELINE")
+    print("=" * 60)
+
+    random_agents = {}
+
+    for agent_name in env.possible_agents:
+
+        random_agents[agent_name] = RandomAgent(
+            env.action_space(agent_name)
+        )
+
+    baseline_episodes = 100
+    baseline_rewards = []
+
+    for episode in range(baseline_episodes):
+
+        observations, infos = env.reset(seed=42 + episode)
+
+        episode_reward = 0.0
+        step = 0
+
+        while True:
+
+            actions = {}
+
+            # --------------------------------------------------
+            # Select random actions
+            # --------------------------------------------------
+
+            for agent_name in env.agents:
+
+                action = random_agents[agent_name].choose_action(
+                    observations[agent_name]
+                )
+
+                actions[agent_name] = action
+
+            # --------------------------------------------------
+            # Environment transition
+            # --------------------------------------------------
+
+            (
+                next_observations,
+                rewards,
+                terminations,
+                truncations,
+                infos,
+            ) = env.step(actions)
+
+            # --------------------------------------------------
+            # Global reward
+            # --------------------------------------------------
+
+            episode_reward += sum(rewards.values())
+
+            observations = next_observations
+
+            step += 1
+
+            # --------------------------------------------------
+            # Episode termination
+            # --------------------------------------------------
+
+            if all(terminations.values()) or all(truncations.values()):
+                break
+
+        baseline_rewards.append(episode_reward)
+
+        if (episode + 1) % 10 == 0:
+
+            print(
+                f"Episode {episode + 1:3d} | "
+                f"Reward: {episode_reward:8.3f} | "
+                f"Steps: {step:3d}"
+            )
+
+    # ==========================================================
+    # Random Agent Summary
+    # ==========================================================
+
+    average_random_reward = (
+        sum(baseline_rewards) / len(baseline_rewards)
+    )
+
+    print("\n" + "=" * 60)
+    print("RANDOM AGENT SUMMARY")
+    print("=" * 60)
+
+    print(f"Baseline episodes: {baseline_episodes}")
+    print(f"Average reward: {average_random_reward:.3f}")
+    print(f"Best reward: {max(baseline_rewards):.3f}")
+    print(f"Worst reward: {min(baseline_rewards):.3f}")
 
     env.close()
 
