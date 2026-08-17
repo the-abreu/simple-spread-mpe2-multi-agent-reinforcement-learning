@@ -58,6 +58,14 @@ class IndependentQLearningAgent(BaseAgent):
 
         return int(np.argmax(self.q_table[state]))
 
+    def choose_greedy_action(self, observation):
+
+        state = discretize(observation)
+
+        self._initialize_state(state)
+
+        return int(np.argmax(self.q_table[state]))
+
     def update(
         self,
         observation,

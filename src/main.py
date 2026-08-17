@@ -2,6 +2,8 @@ from environment.simple_spread import create_environment
 from agents.independent_q_learning_agent import IndependentQLearningAgent
 from agents.random_agent import RandomAgent
 
+import statistics
+
 
 def main():
 
@@ -9,7 +11,7 @@ def main():
     # Training configuration
     # ==========================================================
 
-    num_episodes = 100
+    num_episodes = 1000
 
     # ==========================================================
     # Environment
@@ -210,9 +212,10 @@ def main():
     # ----------------------------------------------------------
     # Disable exploration
     # ----------------------------------------------------------
-
+    """
     for agent in agents.values():
         agent.epsilon = 0.0
+    """
 
     # ----------------------------------------------------------
     # Evaluation loop
@@ -235,7 +238,7 @@ def main():
 
             for agent_name in env.agents:
 
-                action = agents[agent_name].choose_action(
+                action = agents[agent_name].choose_greedy_action(
                     observations[agent_name]
                 )
 
@@ -289,6 +292,8 @@ def main():
         / len(evaluation_rewards)
     )
 
+    std_reward = statistics.stdev(evaluation_rewards)
+
     print("\n" + "=" * 60)
     print("EVALUATION SUMMARY")
     print("=" * 60)
@@ -315,6 +320,12 @@ def main():
 
     print(
         f"Final epsilon: {agents['agent_0'].epsilon:.3f}"
+    )
+    print(
+        f"Average reward: {average_reward:.3f}"
+    )
+    print(
+        f"Std reward: {std_reward:.3f}"
     )
 
     # ==========================================================
@@ -406,6 +417,8 @@ def main():
         sum(baseline_rewards) / len(baseline_rewards)
     )
 
+    std_reward = statistics.stdev(baseline_rewards)
+
     print("\n" + "=" * 60)
     print("RANDOM AGENT SUMMARY")
     print("=" * 60)
@@ -414,6 +427,8 @@ def main():
     print(f"Average reward: {average_random_reward:.3f}")
     print(f"Best reward: {max(baseline_rewards):.3f}")
     print(f"Worst reward: {min(baseline_rewards):.3f}")
+    print(f"Average reward: {average_reward:.3f}")
+    print(f"Std reward: {std_reward:.3f}")
 
     env.close()
 
